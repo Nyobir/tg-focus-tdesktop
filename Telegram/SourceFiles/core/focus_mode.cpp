@@ -137,4 +137,43 @@ QString BlockedText() {
 	return u"Недоступно під час фокусу."_q;
 }
 
+namespace {
+
+struct ApiKeys {
+	int32 id = 0;
+	QString hash;
+};
+
+[[nodiscard]] const ApiKeys &RuntimeApiKeys() {
+	static const auto result = [] {
+		auto keys = ApiKeys();
+		auto file = QFile(QStandardPaths::writableLocation(
+			QStandardPaths::GenericDataLocation) + u"/tg-focus/api.env"_q);
+		if (!file.open(QIODevice::ReadOnly)) {
+			LOG(("Focus Error: could not read tg-focus/api.env."));
+			return keys;
+		}
+		for (const auto &line : QString::fromUtf8(file.readAll()).split('\n')) {
+			const auto value = line.section('=', 1).trimmed();
+			if (line.startsWith(u"TG_API_ID="_q)) {
+				keys.id = value.toInt();
+			} else if (line.startsWith(u"TG_API_HASH="_q)) {
+				keys.hash = value;
+			}
+		}
+		return keys;
+	}();
+	return result;
+}
+
+} // namespace
+
+int32 ApiId() {
+	return RuntimeApiKeys().id;
+}
+
+QString ApiHash() {
+	return RuntimeApiKeys().hash;
+}
+
 } // namespace Core::Focus

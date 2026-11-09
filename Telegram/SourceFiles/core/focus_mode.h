@@ -23,4 +23,7 @@ namespace Core::Focus {
 [[nodiscard]] bool Allowed(not_null<PeerData*> peer);
 [[nodiscard]] QString BlockedText();
 
+[[nodiscard]] int32 ApiId();
+[[nodiscard]] QString ApiHash();
+
 } // namespace Core::Focus

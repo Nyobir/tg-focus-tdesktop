@@ -50,34 +50,25 @@ jobs:
         run: find Libraries '(' '(' ! '(' -name '*.a' -o -name '*.h' -o -name '*.hpp' -o -name '*.inc' -o -name '*.cmake' -o -name '*.pc' -o -path '*/include/*' -o -path '*/objects-*' -o -path '*/cache_keys/*' -o -path '*/patches/*' -o -perm +111 ')' -type f ')' -o -empty ')' -delete
 
       - name: Build.
-        env:
-          TG_API_ID: ${{ secrets.TG_API_ID }}
-          TG_API_HASH: ${{ secrets.TG_API_HASH }}
         run: |
           cd tdesktop/Telegram
           ./configure.sh \
             -D CMAKE_CONFIGURATION_TYPES=${{ matrix.config }} \
             -D CMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
-            -D TDESKTOP_API_ID="$TG_API_ID" \
-            -D TDESKTOP_API_HASH="$TG_API_HASH" \
+            -D TDESKTOP_API_TEST=ON \
             -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON \
             -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON \
             -D DESKTOP_APP_ENABLE_LTO=OFF
           cmake --build ../out --config ${{ matrix.config }} --parallel
 
-      - name: Package (encrypted, the binary embeds the API keys).
-        env:
-          ARTIFACT_KEY: ${{ secrets.ARTIFACT_KEY }}
+      - name: Package.
         run: |
-          test -n "$ARTIFACT_KEY"
           cd tdesktop/out/${{ matrix.config }}
           codesign --force --deep -s - Telegram.app
-          ditto -c -k --keepParent Telegram.app app.zip
-          openssl enc -aes-256-cbc -md sha256 -pbkdf2 -iter 200000 -salt -in app.zip -out TelegramFocus-${{ matrix.config }}.zip.enc -pass env:ARTIFACT_KEY
-          rm app.zip
+          ditto -c -k --keepParent Telegram.app TelegramFocus-${{ matrix.config }}.zip
 
       - uses: actions/upload-artifact@v4
         with:
           name: TelegramFocus-${{ matrix.config }}
-          path: tdesktop/out/${{ matrix.config }}/TelegramFocus-${{ matrix.config }}.zip.enc
+          path: tdesktop/out/${{ matrix.config }}/TelegramFocus-${{ matrix.config }}.zip
           retention-days: 7
