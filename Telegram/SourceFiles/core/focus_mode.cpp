@@ -9,6 +9,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "base/timer.h"
 #include "core/application.h"
+#include "core/focus_mode_logic.h"
 #include "data/data_channel.h"
 #include "data/data_chat_filters.h"
 #include "data/data_peer.h"
@@ -26,7 +27,6 @@ namespace Core::Focus {
 namespace {
 
 constexpr auto kPollTimeout = crl::time(2000);
-constexpr auto kUnlockDelaySeconds = 10 * 60;
 
 [[nodiscard]] QString StatePath() {
 	return QStandardPaths::writableLocation(
@@ -38,15 +38,10 @@ constexpr auto kUnlockDelaySeconds = 10 * 60;
 	if (!file.open(QIODevice::ReadOnly)) {
 		return false;
 	}
-	const auto state = QString::fromUtf8(file.read(16)).trimmed();
-	if (state == u"on"_q) {
-		return true;
-	} else if (state != u"off"_q) {
-		return false;
-	}
-	const auto switchedOff = QFileInfo(file).lastModified();
-	return switchedOff.secsTo(QDateTime::currentDateTime())
-		< kUnlockDelaySeconds;
+	const auto changed = QFileInfo(file).lastModified();
+	return Logic::StateActive(
+		file.read(16),
+		changed.secsTo(QDateTime::currentDateTime()));
 }
 
 class Watcher final {
@@ -82,8 +77,7 @@ private:
 [[nodiscard]] const Data::ChatFilter *FindFolder(
 		not_null<Main::Session*> session) {
 	for (const auto &filter : session->data().chatsFilters().list()) {
-		const auto title = filter.title().text.text.toLower();
-		if (title.contains(u"фокус"_q) || title.contains(u"focus"_q)) {
+		if (Logic::IsFocusFolderTitle(filter.title().text.text)) {
 			return &filter;
 		}
 	}
@@ -139,29 +133,15 @@ QString BlockedText() {
 
 namespace {
 
-struct ApiKeys {
-	int32 id = 0;
-	QString hash;
-};
-
-[[nodiscard]] const ApiKeys &RuntimeApiKeys() {
+[[nodiscard]] const Logic::ApiKeys &RuntimeApiKeys() {
 	static const auto result = [] {
-		auto keys = ApiKeys();
 		auto file = QFile(QStandardPaths::writableLocation(
 			QStandardPaths::GenericDataLocation) + u"/tg-focus/api.env"_q);
 		if (!file.open(QIODevice::ReadOnly)) {
 			LOG(("Focus Error: could not read tg-focus/api.env."));
-			return keys;
+			return Logic::ApiKeys();
 		}
-		for (const auto &line : QString::fromUtf8(file.readAll()).split('\n')) {
-			const auto value = line.section('=', 1).trimmed();
-			if (line.startsWith(u"TG_API_ID="_q)) {
-				keys.id = value.toInt();
-			} else if (line.startsWith(u"TG_API_HASH="_q)) {
-				keys.hash = value;
-			}
-		}
-		return keys;
+		return Logic::ParseApiEnv(file.readAll());
 	}();
 	return result;
 }

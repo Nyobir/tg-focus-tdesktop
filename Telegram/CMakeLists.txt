@@ -574,6 +574,7 @@ PRIVATE
     core/application.h
     core/focus_mode.cpp
     core/focus_mode.h
+    core/focus_mode_logic.h
     core/proxy_rotation_manager.cpp
     core/proxy_rotation_manager.h
     core/cached_webview_availability.h
