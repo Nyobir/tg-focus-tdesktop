@@ -109,6 +109,15 @@ FilterId ForcedFilterId(not_null<Main::Session*> session) {
 		return 0;
 	}
 	const auto folder = FindFolder(session);
+	if (!folder) {
+		auto titles = QStringList();
+		for (const auto &filter : session->data().chatsFilters().list()) {
+			titles.push_back(filter.title().text.text);
+		}
+		LOG(("Focus: no focus folder among %1 folders: [%2]"
+			).arg(titles.size()
+			).arg(titles.join(u", "_q)));
+	}
 	return folder ? folder->id() : 0;
 }
 

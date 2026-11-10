@@ -1877,6 +1877,8 @@ SessionController::SessionController(
 		}
 		closeFolder();
 		setActiveChatsFilter(0);
+		LOG(("Focus: on, active filter %1"
+			).arg(activeChatsFilterCurrent()));
 		const auto peer = activeChatCurrent().peer();
 		if (peer && !Core::Focus::Allowed(peer)) {
 			clearSectionStack();
@@ -2242,6 +2244,12 @@ rpl::producer<> SessionController::filtersMenuChanged() const {
 
 void SessionController::checkOpenedFilter() {
 	activateFirstChatsFilter();
+	if (const auto forced = Core::Focus::ForcedFilterId(&session())) {
+		if (activeChatsFilterCurrent() != forced) {
+			setActiveChatsFilter(forced);
+		}
+		return;
+	}
 	if (const auto filterId = activeChatsFilterCurrent()) {
 		const auto &list = session().data().chatsFilters().list();
 		const auto i = ranges::find(list, filterId, &Data::ChatFilter::id);
