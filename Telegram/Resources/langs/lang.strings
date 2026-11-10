@@ -9181,6 +9181,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 "lng_focus_unlock_confirm" = "Вимкнути";
 "lng_focus_unlock_pay" = "Надіслати {stars} ⭐";
 "lng_focus_stars_failed" = "Не вдалося надіслати зірки. Фокус лишається увімкненим.";
+"lng_focus_stars_no_paid" = "У цьому каналі вимкнені платні реакції. Виберіть інший.";
+"lng_focus_stars_balance" = "Недостатньо зірок. Поповніть баланс і спробуйте ще раз.";
 "lng_focus_stars_no_peer" = "Канал для зірок недоступний. Фокус лишається увімкненим.";
 
 // Keys finished

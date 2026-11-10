@@ -164,8 +164,13 @@ void Watcher::setRuntime(Logic::Runtime runtime) {
 
 void Watcher::check() {
 	const auto system = ReadSystemState();
+	const auto tracked = Logic::TrackSystem(_runtime, system);
+	if (tracked != _runtime) {
+		setRuntime(tracked);
+		return;
+	}
 	const auto now = QDateTime::currentDateTime();
-	auto evaluation = Logic::Evaluate(_settings, _runtime, system, now);
+	const auto evaluation = Logic::Evaluate(_settings, _runtime, system, now);
 	if (Logic::UnlockFinished(_runtime, now)) {
 		setRuntime(Logic::FinishUnlock(
 			_runtime,

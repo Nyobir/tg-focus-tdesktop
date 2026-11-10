@@ -11,6 +11,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/unixtime.h"
 #include "boxes/peer_list_controllers.h"
 #include "core/focus_mode.h"
+#include "data/data_changes.h"
+#include "data/data_channel.h"
 #include "data/data_chat_filters.h"
 #include "data/data_peer.h"
 #include "data/data_session.h"
@@ -221,11 +223,34 @@ void ChooseStarsPeer(
 		not_null<Window::SessionController*> controller,
 		Fn<void(not_null<PeerData*>)> save) {
 	const auto weak = std::make_shared<base::weak_qptr<Ui::BoxContent>>();
+	const auto show = controller->uiShow();
 	auto chosen = [=](not_null<Data::Thread*> thread) {
-		save(thread->peer());
-		if (const auto strong = weak->get()) {
+		const auto channel = thread->peer()->asChannel();
+		if (!channel) {
+			return;
+		} else if (const auto strong = weak->get()) {
 			strong->closeBox();
 		}
+		const auto apply = [=] {
+			if (channel->allowedReactions().paidEnabled) {
+				save(channel);
+			} else {
+				show->showToast(tr::lng_focus_stars_no_paid(tr::now));
+			}
+		};
+		if (channel->wasFullUpdated()) {
+			apply();
+			return;
+		}
+		channel->session().changes().peerFlagsValue(
+			channel,
+			Data::PeerUpdate::Flag::FullInfo
+		) | rpl::filter([=](const Data::PeerUpdate &) {
+			return channel->wasFullUpdated();
+		}) | rpl::take(1) | rpl::to_empty | rpl::on_next(
+			apply,
+			controller->lifetime());
+		channel->updateFull();
 	};
 	auto filter = [](not_null<Data::Thread*> thread) {
 		return thread->peer()->isChannel();
@@ -257,7 +282,7 @@ void SendStars(
 		not_null<PeerData*> peer,
 		int stars,
 		Fn<void()> done,
-		Fn<void()> fail) {
+		Fn<void(QString)> fail) {
 	const auto api = &session->api();
 	api->request(MTPmessages_GetHistory(
 		peer->input(),
@@ -277,7 +302,7 @@ void SendStars(
 			return list.isEmpty() ? MsgId() : IdFromMessage(list.front());
 		});
 		if (!messageId) {
-			fail();
+			fail(QString());
 			return;
 		}
 		api->request(MTPmessages_SendPaidReaction(
@@ -292,11 +317,11 @@ void SendStars(
 			done();
 		}).fail([=](const MTP::Error &error) {
 			LOG(("Focus Error: paid reaction failed, %1.").arg(error.type()));
-			fail();
+			fail(error.type());
 		}).send();
 	}).fail([=](const MTP::Error &error) {
 		LOG(("Focus Error: could not get history, %1.").arg(error.type()));
-		fail();
+		fail(error.type());
 	}).send();
 }
 
@@ -682,9 +707,11 @@ void ShowFocusUnlockBox(not_null<Window::SessionController*> controller) {
 				if (const auto strong = weak.get()) {
 					strong->closeBox();
 				}
-			}, crl::guard(box, [=] {
+			}, crl::guard(box, [=](const QString &error) {
 				*sending = false;
-				show->showToast(tr::lng_focus_stars_failed(tr::now));
+				show->showToast((error == u"BALANCE_TOO_LOW"_q)
+					? tr::lng_focus_stars_balance(tr::now)
+					: tr::lng_focus_stars_failed(tr::now));
 			}));
 		}, st::attentionBoxButton);
 		box->addButton(tr::lng_cancel(), [=] {

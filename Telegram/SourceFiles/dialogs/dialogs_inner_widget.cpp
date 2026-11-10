@@ -2748,7 +2748,8 @@ void InnerWidget::checkReorderPinnedStart(QPoint localPosition) {
 	if (!_pressed
 		|| _dragging
 		|| (_state != WidgetState::Default)
-		|| _pressedRightButtonData) {
+		|| _pressedRightButtonData
+		|| (_filterId < 0)) {
 		return;
 	} else if (std::abs(localPosition.y() - _dragStart.y())
 		< style::ConvertScale(kStartReorderThreshold)) {
@@ -5135,7 +5136,7 @@ void InnerWidget::refreshEmpty() {
 			: EmptyState::None)
 		: (!_filterId && data->contactsLoaded().current())
 		? EmptyState::NoContacts
-		: (_filterId > 0) && data->chatsList()->loaded()
+		: _filterId && data->chatsList()->loaded()
 		? EmptyState::EmptyFolder
 		: EmptyState::Loading;
 	if (state == EmptyState::None) {
@@ -5169,7 +5170,7 @@ void InnerWidget::refreshEmpty() {
 		: tr::lng_contacts_loading();
 	auto link = (state == EmptyState::NoContacts)
 		? tr::lng_add_contact_button()
-		: (state == EmptyState::EmptyFolder)
+		: (state == EmptyState::EmptyFolder && _filterId > 0)
 		? tr::lng_filters_context_edit()
 		: (state == EmptyState::EmptyForum)
 		? tr::lng_forum_create_topic()

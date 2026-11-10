@@ -50,6 +50,7 @@ struct Runtime {
 	qint64 unlockAt = 0;
 	qint64 pausedUntil = 0;
 	qint64 systemIgnoredChange = 0;
+	bool systemIgnoredOn = false;
 
 	friend inline bool operator==(const Runtime &, const Runtime &) = default;
 };
@@ -160,8 +161,7 @@ struct Evaluation {
 		Runtime runtime,
 		qint64 now) {
 	if (!runtime.unlockAt) {
-		runtime.unlockAt = now
-			+ std::max(qint64(settings.unlockDelayMinutes) * 60, qint64(1));
+		runtime.unlockAt = now + qint64(settings.unlockDelayMinutes) * 60;
 	}
 	return runtime;
 }
@@ -176,6 +176,20 @@ struct Evaluation {
 		runtime.pausedUntil = windowEnd;
 	}
 	runtime.systemIgnoredChange = system.changed;
+	runtime.systemIgnoredOn = system.on;
+	return runtime;
+}
+
+[[nodiscard]] inline Runtime TrackSystem(
+		Runtime runtime,
+		const SystemState &system) {
+	if (!runtime.systemIgnoredOn
+		|| system.changed == runtime.systemIgnoredChange) {
+		return runtime;
+	} else if (system.off) {
+		runtime.systemIgnoredChange = system.changed;
+	}
+	runtime.systemIgnoredOn = false;
 	return runtime;
 }
 
@@ -267,6 +281,7 @@ struct Evaluation {
 		{ "unlockAt", QString::number(r.unlockAt) },
 		{ "pausedUntil", QString::number(r.pausedUntil) },
 		{ "systemIgnoredChange", QString::number(r.systemIgnoredChange) },
+		{ "systemIgnoredOn", r.systemIgnoredOn },
 	}).toJson();
 }
 
@@ -280,6 +295,7 @@ struct Evaluation {
 		.unlockAt = number("unlockAt"),
 		.pausedUntil = number("pausedUntil"),
 		.systemIgnoredChange = number("systemIgnoredChange"),
+		.systemIgnoredOn = o.value("systemIgnoredOn").toBool(),
 	};
 }
 
