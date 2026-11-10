@@ -1890,7 +1890,7 @@ SessionController::SessionController(
 	) | rpl::on_next([=](
 			Core::Focus::Logic::Status was,
 			Core::Focus::Logic::Status now) {
-		const auto text = Core::Focus::Logic::PhaseToast(was, now);
+		const auto text = Core::Focus::PhaseToast(was, now);
 		if (isPrimary() && !text.isEmpty()) {
 			showToast(text);
 		}
@@ -2255,7 +2255,7 @@ rpl::producer<> SessionController::filtersMenuChanged() const {
 
 void SessionController::checkOpenedFilter() {
 	activateFirstChatsFilter();
-	if (const auto forced = Core::Focus::ForcedFilterId(&session())) {
+	if (const auto forced = Core::Focus::ForcedFilterId()) {
 		if (activeChatsFilterCurrent() != forced) {
 			setActiveChatsFilter(forced);
 		}
@@ -3564,7 +3564,7 @@ void SessionController::setActiveChatsFilter(
 		const SectionShow &params) {
 	if (!isPrimary()) {
 		return;
-	} else if (const auto forced = Core::Focus::ForcedFilterId(&session())) {
+	} else if (const auto forced = Core::Focus::ForcedFilterId()) {
 		id = forced;
 	}
 	const auto changed = (activeChatsFilterCurrent() != id);

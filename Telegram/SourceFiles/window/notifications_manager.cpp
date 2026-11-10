@@ -447,7 +447,7 @@ void System::schedule(Data::ItemNotification notification) {
 	const auto thread = item->notificationThread();
 	const auto skip = skipNotification(notification);
 	if (skip.value == SkipState::Skip
-		|| !Core::Focus::Allowed(item->history()->peer)) {
+		|| !Core::Focus::Notify(item->history()->peer)) {
 		thread->popNotification(notification);
 		return;
 	}

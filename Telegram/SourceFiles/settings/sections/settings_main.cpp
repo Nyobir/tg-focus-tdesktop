@@ -56,6 +56,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/settings_codes.h"
 #include "settings/settings_faq_suggestions.h"
 #include "settings/sections/settings_credits.h"
+#include "settings/sections/settings_focus.h"
 #include "settings/sections/settings_folders.h"
 #include "settings/sections/settings_information.h"
 #include "settings/sections/settings_notifications.h"
@@ -439,6 +440,13 @@ void BuildSectionButtons(SectionBuilder &builder) {
 			.shown = std::move(shownProducer),
 		});
 	}
+
+	builder.addSectionButton({
+		.title = tr::lng_focus_title(),
+		.targetSection = FocusModeId(),
+		.icon = { &st::menuIconNightMode },
+		.keywords = { u"focus"_q, u"work"_q },
+	});
 
 	builder.addSectionButton({
 		.title = tr::lng_settings_advanced(),

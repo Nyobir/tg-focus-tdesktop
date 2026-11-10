@@ -723,4 +723,15 @@ Type WorkingHoursId() {
 	return WorkingHours::Id();
 }
 
+QString FormatWorkingTime(TimeId time) {
+	return FormatDayTime(time);
+}
+
+void ChooseWorkingTimeBox(
+		not_null<Ui::GenericBox*> box,
+		TimeId value,
+		Fn<void(TimeId)> save) {
+	EditTimeBox(box, 0, kDay - 60, value, std::move(save));
+}
+
 } // namespace Settings

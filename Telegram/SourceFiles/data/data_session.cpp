@@ -410,6 +410,14 @@ Session::Session(not_null<Main::Session*> session)
 
 	subscribeForTopicRepliesLists();
 
+	rpl::merge(
+		Core::Focus::SettingsChanges(),
+		_chatsFilters->changed(),
+		pinnedDialogsOrderUpdated()
+	) | rpl::on_next([=] {
+		Core::Focus::RefreshLists(_session);
+	}, _lifetime);
+
 	crl::on_main(_session, [=] {
 		AmPremiumValue(
 			_session
@@ -3638,10 +3646,9 @@ HistoryItem *Session::addNewMessage(
 }
 
 Dialogs::UnreadState Session::badgeUnreadState() const {
-	if (const auto forced = Core::Focus::ForcedFilterId(_session)) {
-		return _chatsFilters->chatsList(forced)->unreadState();
-	}
-	return _chatsList.unreadState();
+	return Core::Focus::Active()
+		? _chatsFilters->chatsList(Core::Focus::kBadgeListId)->unreadState()
+		: _chatsList.unreadState();
 }
 
 int Session::unreadBadge() const {
@@ -5705,6 +5712,7 @@ void Session::refreshChatListEntry(Dialogs::Key key) {
 			_chatListEntryRefreshes.fire(std::move(event));
 		}
 	}
+	refreshFocusListsEntry(history);
 
 	if (creating) {
 		if (const auto from = history->peer->migrateFrom()) {
@@ -5741,6 +5749,34 @@ void Session::refreshChatListUnreadOnTop() {
 	}
 }
 
+void Session::refreshFocusListsEntry(not_null<History*> history) {
+	using namespace Dialogs;
+
+	const auto mode = Core::Focus::HistoryMode(history);
+	const auto lists = {
+		std::pair{ Core::Focus::kListId, mode != Core::Focus::Mode::Hide },
+		std::pair{ Core::Focus::kBadgeListId, mode == Core::Focus::Mode::Show },
+	};
+	for (const auto &[id, shown] : lists) {
+		auto event = ChatListEntryRefresh{ .key = history, .filterId = id };
+		const auto list = chatsFilters().chatsList(id);
+		if (shown) {
+			event.existenceChanged = !history->inChatList(id);
+			if (event.existenceChanged) {
+				history->addToChatList(id, list);
+			} else {
+				event.moved = history->adjustByPosInChatList(id, list);
+			}
+		} else if (history->inChatList(id)) {
+			history->removeFromChatList(id, list);
+			event.existenceChanged = true;
+		}
+		if (event) {
+			_chatListEntryRefreshes.fire(std::move(event));
+		}
+	}
+}
+
 void Session::removeChatListEntry(Dialogs::Key key) {
 	using namespace Dialogs;
 
@@ -5753,6 +5789,16 @@ void Session::removeChatListEntry(Dialogs::Key key) {
 	for (const auto &filter : _chatsFilters->list()) {
 		const auto id = filter.id();
 		if (id && entry->inChatList(id)) {
+			entry->removeFromChatList(id, chatsFilters().chatsList(id));
+			_chatListEntryRefreshes.fire(ChatListEntryRefresh{
+				.key = key,
+				.filterId = id,
+				.existenceChanged = true
+			});
+		}
+	}
+	for (const auto id : { Core::Focus::kListId, Core::Focus::kBadgeListId }) {
+		if (entry->inChatList(id)) {
 			entry->removeFromChatList(id, chatsFilters().chatsList(id));
 			_chatListEntryRefreshes.fire(ChatListEntryRefresh{
 				.key = key,

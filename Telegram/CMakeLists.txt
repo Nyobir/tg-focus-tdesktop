@@ -1970,6 +1970,8 @@ PRIVATE
     settings/settings_credits_graphics.h
     settings/settings_experimental.cpp
     settings/settings_experimental.h
+    settings/sections/settings_focus.cpp
+    settings/sections/settings_focus.h
     settings/sections/settings_folders.cpp
     settings/sections/settings_folders.h
     settings/sections/settings_global_ttl.cpp

@@ -8,6 +8,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "dialogs/dialogs_widget.h"
 
 #include "core/focus_mode.h"
+#include "settings/sections/settings_focus.h"
 
 #include "base/call_delayed.h"
 #include "base/qt/qt_key_modifiers.h"
@@ -1283,15 +1284,18 @@ void Widget::setupFocusBar() {
 	}
 	Core::Focus::StatusValue(
 	) | rpl::on_next([=](Core::Focus::Logic::Status status) {
-		const auto text = Core::Focus::Logic::StatusLabel(status);
+		const auto text = Core::Focus::StatusLabel(status);
 		if (text == _focusBarText) {
 			return;
 		}
 		_focusBarText = text;
 		_focusBar = nullptr;
 		if (!text.isEmpty()) {
-			_focusBar = std::make_unique<Ui::RpWidget>(this);
+			_focusBar = std::make_unique<Ui::AbstractButton>(this);
 			const auto raw = _focusBar.get();
+			raw->setClickedCallback([=] {
+				controller()->showSettings(Settings::FocusModeId());
+			});
 			const auto label = raw->lifetime().make_state<Ui::Text::String>(
 				st::semiboldTextStyle,
 				text);
@@ -1603,7 +1607,7 @@ void Widget::setupMoreChatsBar() {
 			}
 		});
 
-		if (!id) {
+		if (id <= 0) {
 			_moreChatsBar = nullptr;
 			updateControlsGeometry();
 			return;

@@ -9,8 +9,17 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 
 #include "settings/settings_type.h"
 
+namespace Ui {
+class GenericBox;
+} // namespace Ui
+
 namespace Settings {
 
 [[nodiscard]] Type WorkingHoursId();
+[[nodiscard]] QString FormatWorkingTime(TimeId time);
+void ChooseWorkingTimeBox(
+	not_null<Ui::GenericBox*> box,
+	TimeId value,
+	Fn<void(TimeId)> save);
 
 } // namespace Settings

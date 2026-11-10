@@ -336,7 +336,7 @@ private:
 	const int _narrowWidth = 0;
 
 	std::unique_ptr<Ui::AbstractButton> _frozenAccountBar;
-	std::unique_ptr<Ui::RpWidget> _focusBar;
+	std::unique_ptr<Ui::AbstractButton> _focusBar;
 	QString _focusBarText;
 
 	object_ptr<Ui::RpWidget> _searchControls;

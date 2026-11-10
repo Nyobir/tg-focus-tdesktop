@@ -29,6 +29,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "core/application.h"
 #include "core/click_handler_types.h"
 #include "core/file_utilities.h"
+#include "core/focus_mode.h"
 #include "core/shortcuts.h"
 #include "core/ui_integration.h"
 #include "ui/widgets/buttons.h"
@@ -5791,7 +5792,7 @@ void InnerWidget::switchToFilter(FilterId filterId) {
 		? ranges::find(list, filterId, &Data::ChatFilter::id)
 		: end(list);
 	const auto found = (filterIt != end(list));
-	if (!found) {
+	if (!found && filterId != Core::Focus::kListId) {
 		filterId = 0;
 	}
 	if (_filterId == filterId) {
