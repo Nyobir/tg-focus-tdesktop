@@ -67,7 +67,7 @@ jobs:
           codesign --force --deep -s - Telegram.app
           ditto -c -k --keepParent Telegram.app TelegramFocus-${{ matrix.config }}.zip
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: TelegramFocus-${{ matrix.config }}
           path: tdesktop/out/${{ matrix.config }}/TelegramFocus-${{ matrix.config }}.zip
