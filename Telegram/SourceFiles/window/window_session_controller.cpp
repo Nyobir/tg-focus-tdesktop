@@ -1885,6 +1885,17 @@ SessionController::SessionController(
 		}
 	}, lifetime());
 
+	Core::Focus::StatusValue(
+	) | rpl::combine_previous(
+	) | rpl::on_next([=](
+			Core::Focus::Logic::Status was,
+			Core::Focus::Logic::Status now) {
+		const auto text = Core::Focus::Logic::PhaseToast(was, now);
+		if (isPrimary() && !text.isEmpty()) {
+			showToast(text);
+		}
+	}, lifetime());
+
 	session->data().itemIdChanged(
 	) | rpl::on_next([=](Data::Session::IdChange change) {
 		const auto current = _activeChatEntry.current();

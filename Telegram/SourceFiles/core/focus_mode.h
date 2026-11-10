@@ -7,6 +7,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #pragma once
 
+#include "core/focus_mode_logic.h"
 #include "data/data_types.h"
 
 class PeerData;
@@ -19,6 +20,7 @@ namespace Core::Focus {
 
 [[nodiscard]] bool Active();
 [[nodiscard]] rpl::producer<bool> ActiveValue();
+[[nodiscard]] rpl::producer<Logic::Status> StatusValue();
 [[nodiscard]] FilterId ForcedFilterId(not_null<Main::Session*> session);
 [[nodiscard]] bool Allowed(not_null<PeerData*> peer);
 [[nodiscard]] QString BlockedText();

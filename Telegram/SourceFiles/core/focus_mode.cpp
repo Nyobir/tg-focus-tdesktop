@@ -33,13 +33,13 @@ constexpr auto kPollTimeout = crl::time(2000);
 		QStandardPaths::GenericDataLocation) + u"/tg-focus/state"_q;
 }
 
-[[nodiscard]] bool ReadActive() {
+[[nodiscard]] Logic::Status ReadStatus() {
 	auto file = QFile(StatePath());
 	if (!file.open(QIODevice::ReadOnly)) {
-		return false;
+		return {};
 	}
 	const auto changed = QFileInfo(file).lastModified();
-	return Logic::StateActive(
+	return Logic::ParseState(
 		file.read(16),
 		changed.secsTo(QDateTime::currentDateTime()));
 }
@@ -48,7 +48,7 @@ class Watcher final {
 public:
 	Watcher() {
 		_timer.callEach(kPollTimeout);
-		_active.changes() | rpl::on_next([] {
+		value() | rpl::skip(1) | rpl::on_next([] {
 			if (IsAppLaunched()) {
 				App().domain().notifyUnreadBadgeChanged();
 			}
@@ -56,15 +56,20 @@ public:
 	}
 
 	[[nodiscard]] bool current() const {
-		return _active.current();
+		return _status.current().active;
 	}
 	[[nodiscard]] rpl::producer<bool> value() const {
-		return _active.value();
+		return _status.value() | rpl::map([](const Logic::Status &s) {
+			return s.active;
+		}) | rpl::distinct_until_changed();
+	}
+	[[nodiscard]] rpl::producer<Logic::Status> status() const {
+		return _status.value();
 	}
 
 private:
-	rpl::variable<bool> _active = ReadActive();
-	base::Timer _timer{ [this] { _active = ReadActive(); } };
+	rpl::variable<Logic::Status> _status = ReadStatus();
+	base::Timer _timer{ [this] { _status = ReadStatus(); } };
 	rpl::lifetime _lifetime;
 
 };
@@ -102,6 +107,10 @@ bool Active() {
 
 rpl::producer<bool> ActiveValue() {
 	return Instance().value();
+}
+
+rpl::producer<Logic::Status> StatusValue() {
+	return Instance().status();
 }
 
 FilterId ForcedFilterId(not_null<Main::Session*> session) {

@@ -7,6 +7,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 */
 #include "dialogs/dialogs_widget.h"
 
+#include "core/focus_mode.h"
+
 #include "base/call_delayed.h"
 #include "base/qt/qt_key_modifiers.h"
 #include "base/options.h"
@@ -843,6 +845,7 @@ Widget::Widget(
 	}
 
 	setupFrozenAccountBar();
+	setupFocusBar();
 	setupTopBarSuggestions();
 #ifdef _DEBUG
 	setupTopBarSuggestionTestHotkeys();
@@ -1270,6 +1273,50 @@ void Widget::setupFrozenAccountBar() {
 	session().frozenValue(
 	) | rpl::on_next([=] {
 		updateFrozenAccountBar();
+		updateControlsGeometry();
+	}, lifetime());
+}
+
+void Widget::setupFocusBar() {
+	if (_layout == Layout::Child) {
+		return;
+	}
+	Core::Focus::StatusValue(
+	) | rpl::on_next([=](Core::Focus::Logic::Status status) {
+		const auto text = Core::Focus::Logic::StatusLabel(status);
+		if (text == _focusBarText) {
+			return;
+		}
+		_focusBarText = text;
+		_focusBar = nullptr;
+		if (!text.isEmpty()) {
+			_focusBar = std::make_unique<Ui::RpWidget>(this);
+			const auto raw = _focusBar.get();
+			const auto label = raw->lifetime().make_state<Ui::Text::String>(
+				st::semiboldTextStyle,
+				text);
+			raw->resize(width(), st::semiboldFont->height * 2);
+			raw->paintRequest() | rpl::on_next([=] {
+				auto p = Painter(raw);
+				p.fillRect(raw->rect(), st::historyComposeAreaBg);
+				p.fillRect(
+					0,
+					raw->height() - st::lineWidth,
+					raw->width(),
+					st::lineWidth,
+					st::shadowFg);
+				p.setPen(st::windowActiveTextFg);
+				const auto available = raw->width()
+					- 2 * st::defaultDialogRow.padding.left();
+				const auto w = std::min(label->maxWidth(), available);
+				label->drawElided(
+					p,
+					(raw->width() - w) / 2,
+					(raw->height() - st::semiboldFont->height) / 2,
+					std::max(w, 1));
+			}, raw->lifetime());
+			raw->setVisible(!_showAnimation && !suggestionsCoverList());
+		}
 		updateControlsGeometry();
 	}, lifetime());
 }
@@ -1995,6 +2042,9 @@ void Widget::updateControlsVisibility(bool fast) {
 	}
 	if (_frozenAccountBar) {
 		_frozenAccountBar->show();
+	}
+	if (_focusBar) {
+		_focusBar->show();
 	}
 	if (_chatFilters) {
 		_chatFilters->setVisible(!_openedForum);
@@ -2900,6 +2950,9 @@ void Widget::startWidthAnimation() {
 	if (_frozenAccountBar) {
 		_frozenAccountBar->hide();
 	}
+	if (_focusBar) {
+		_focusBar->hide();
+	}
 	if (_chatFilters) {
 		_chatFilters->hide();
 	}
@@ -2912,6 +2965,9 @@ void Widget::stopWidthAnimation() {
 		_scroll->setVisible(!suggestionsCoverList());
 		if (_frozenAccountBar) {
 			_frozenAccountBar->setVisible(!suggestionsCoverList());
+		}
+		if (_focusBar) {
+			_focusBar->setVisible(!suggestionsCoverList());
 		}
 		if (_chatFilters) {
 			_chatFilters->setVisible(!suggestionsCoverList() && !_openedForum);
@@ -3043,6 +3099,9 @@ void Widget::startSlideAnimation(
 	}
 	if (_frozenAccountBar) {
 		_frozenAccountBar->hide();
+	}
+	if (_focusBar) {
+		_focusBar->hide();
 	}
 	if (_chatFilters) {
 		_chatFilters->hide();
@@ -4790,14 +4849,22 @@ void Widget::updateControlsGeometry() {
 	if (_frozenAccountBar) {
 		_frozenAccountBar->resize(barw, _frozenAccountBar->height());
 	}
+	if (_focusBar) {
+		_focusBar->resize(barw, _focusBar->height());
+	}
 	_updateScrollGeometryCached = [=] {
 		const auto frozenBarTop = expandedStoriesTop
 			+ ((!_stories || _stories->isHidden()) ? 0 : _aboveScrollAdded);
 		if (_frozenAccountBar) {
 			_frozenAccountBar->move(0, frozenBarTop);
 		}
-		const auto moreChatsBarTop = frozenBarTop
+		const auto focusBarTop = frozenBarTop
 			+ (_frozenAccountBar ? _frozenAccountBar->height() : 0);
+		if (_focusBar) {
+			_focusBar->move(0, focusBarTop);
+		}
+		const auto moreChatsBarTop = focusBarTop
+			+ (_focusBar ? _focusBar->height() : 0);
 		if (_moreChatsBar) {
 			_moreChatsBar->move(0, moreChatsBarTop);
 		}

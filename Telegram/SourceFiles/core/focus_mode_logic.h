@@ -11,20 +11,61 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtCore/QString>
 #include <QtCore/QStringList>
 
+#include <algorithm>
+
 namespace Core::Focus::Logic {
 
 inline constexpr auto kUnlockDelaySeconds = 10 * 60;
 
-[[nodiscard]] inline bool StateActive(
+struct Status {
+	bool active = false;
+	int minutesLeft = 0; // > 0 while restrictions linger after "off".
+
+	friend inline bool operator==(const Status &, const Status &) = default;
+};
+
+[[nodiscard]] inline Status ParseState(
 		const QByteArray &content,
 		qint64 secondsSinceChange) {
 	const auto state = QString::fromUtf8(content).trimmed();
 	if (state == QStringLiteral("on")) {
-		return true;
-	} else if (state != QStringLiteral("off")) {
-		return false;
+		return { .active = true };
+	} else if (state != QStringLiteral("off")
+		|| secondsSinceChange >= kUnlockDelaySeconds) {
+		return {};
 	}
-	return secondsSinceChange < kUnlockDelaySeconds;
+	const auto left = kUnlockDelaySeconds - std::max(secondsSinceChange, qint64());
+	return { .active = true, .minutesLeft = int((left + 59) / 60) };
+}
+
+[[nodiscard]] inline bool StateActive(
+		const QByteArray &content,
+		qint64 secondsSinceChange) {
+	return ParseState(content, secondsSinceChange).active;
+}
+
+// Text for the bar above the chat list, empty when focus is off.
+[[nodiscard]] inline QString StatusLabel(Status status) {
+	return !status.active
+		? QString()
+		: !status.minutesLeft
+		? QStringLiteral("🎯 Фокус")
+		: QStringLiteral("🎯 Фокус ще %1 хв").arg(status.minutesLeft);
+}
+
+// Toast when the phase (off / on / unlocking) changes, empty otherwise.
+[[nodiscard]] inline QString PhaseToast(Status was, Status now) {
+	const auto phase = [](Status s) {
+		return !s.active ? 0 : !s.minutesLeft ? 1 : 2;
+	};
+	if (phase(was) == phase(now)) {
+		return QString();
+	}
+	switch (phase(now)) {
+	case 0: return QStringLiteral("Фокус вимкнено.");
+	case 1: return QStringLiteral("Фокус увімкнено.");
+	}
+	return QStringLiteral("Фокус вимкнеться за %1 хв.").arg(now.minutesLeft);
 }
 
 [[nodiscard]] inline bool IsFocusFolderTitle(const QString &title) {

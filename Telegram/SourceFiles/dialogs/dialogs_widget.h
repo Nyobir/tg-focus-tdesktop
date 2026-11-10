@@ -209,6 +209,7 @@ private:
 	void setupSupportMode();
 	void setupTouchChatPreview();
 	void setupFrozenAccountBar();
+	void setupFocusBar();
 	void setupConnectingWidget();
 	void setupMainMenuToggle();
 	void setupMoreChatsBar();
@@ -335,6 +336,8 @@ private:
 	const int _narrowWidth = 0;
 
 	std::unique_ptr<Ui::AbstractButton> _frozenAccountBar;
+	std::unique_ptr<Ui::RpWidget> _focusBar;
+	QString _focusBarText;
 
 	object_ptr<Ui::RpWidget> _searchControls;
 	object_ptr<HistoryView::TopBarWidget> _subsectionTopBar = { nullptr };
